@@ -37,6 +37,8 @@ export const ingestJobSchema = z.object({
   /** Upload: absolute staging paths. Picker/Drive: remote item ids. */
   items: z.array(z.string()).default([]),
   externalRef: z.string().nullable().default(null),
+  /** Set when the uploader confirms the batch is already consent-cleared. */
+  markCleared: z.boolean().default(false),
 })
 export type IngestJobData = z.infer<typeof ingestJobSchema>
 

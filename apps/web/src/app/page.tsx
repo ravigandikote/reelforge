@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { prisma } from '@reelforge/db'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic'
 /** Build order from the project brief; flipped to done as each step lands. */
 const BUILD_STEPS: { step: number; label: string; done: boolean }[] = [
   { step: 1, label: 'Monorepo, Prisma schema, dev orchestration', done: true },
-  { step: 2, label: 'Direct-upload ingest → probe → catalogue', done: false },
+  { step: 2, label: 'Direct-upload ingest → probe → catalogue', done: true },
   { step: 3, label: 'Google Photos Picker + Drive ingest', done: false },
   { step: 4, label: 'AI descriptions and tags', done: false },
   { step: 5, label: 'Script → EDL planning', done: false },
@@ -18,6 +19,14 @@ const BUILD_STEPS: { step: number; label: string; done: boolean }[] = [
   { step: 9, label: 'Tests', done: false },
   { step: 10, label: 'README and troubleshooting', done: false },
 ]
+
+async function recentJobs() {
+  try {
+    return await prisma.job.findMany({ orderBy: { createdAt: 'desc' }, take: 5 })
+  } catch {
+    return []
+  }
+}
 
 async function counts() {
   try {
@@ -34,8 +43,16 @@ async function counts() {
   }
 }
 
+const JOB_TONE: Record<string, 'ok' | 'warn' | 'error' | 'muted'> = {
+  succeeded: 'ok',
+  running: 'warn',
+  queued: 'muted',
+  failed: 'error',
+  cancelled: 'muted',
+}
+
 export default async function HomePage() {
-  const [stats, redis] = await Promise.all([counts(), redisReachable()])
+  const [stats, redis, jobs] = await Promise.all([counts(), redisReachable(), recentJobs()])
 
   return (
     <div className="space-y-8">
@@ -96,9 +113,43 @@ export default async function HomePage() {
             ) : (
               <p className="text-indigo/60">No database yet.</p>
             )}
+            <Link
+              href="/library"
+              className="mt-3 inline-block font-caption text-xs text-terracotta hover:underline"
+            >
+              Open the library →
+            </Link>
           </CardContent>
         </Card>
       </div>
+
+      {jobs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent jobs</CardTitle>
+            <CardDescription>Every ingest, plan and render keeps its own event log.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1.5 font-caption text-sm">
+              {jobs.map((job) => (
+                <li key={job.id} className="flex items-center gap-3">
+                  <Badge variant={JOB_TONE[job.status] ?? 'muted'}>{job.status}</Badge>
+                  <span className="text-indigo/60">{job.type}</span>
+                  <span className="truncate text-indigo/80">{job.error ?? job.message}</span>
+                  <span className="ml-auto shrink-0 text-xs text-indigo/40">
+                    {job.createdAt.toLocaleString(undefined, {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

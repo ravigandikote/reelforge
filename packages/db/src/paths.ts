@@ -1,16 +1,7 @@
-import { existsSync } from 'node:fs'
 import path from 'node:path'
+import { repoRoot } from '@reelforge/shared/paths'
 
-/** Walks up from cwd to the workspace root (the directory holding pnpm-workspace.yaml). */
-export function repoRoot(from: string = process.cwd()): string {
-  let dir = path.resolve(from)
-  for (;;) {
-    if (existsSync(path.join(dir, 'pnpm-workspace.yaml'))) return dir
-    const parent = path.dirname(dir)
-    if (parent === dir) return path.resolve(from)
-    dir = parent
-  }
-}
+export { repoRoot }
 
 /**
  * The Prisma CLI resolves a relative `file:` URL against prisma/ (where the

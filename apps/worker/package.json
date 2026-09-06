@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@reelforge/db": "workspace:*",
+    "@reelforge/media": "workspace:*",
     "@reelforge/shared": "workspace:*",
     "bullmq": "^5.34.6",
     "dotenv": "^16.4.7",

@@ -15,8 +15,8 @@ FFmpeg and Remotion for the media work.
 | pnpm | 10+ | `corepack enable && corepack prepare pnpm@10 --activate` |
 | Docker | any recent | only used to run Redis (`pnpm redis:up`) |
 
-FFmpeg is not required system-wide — the worker uses the bundled
-`@ffmpeg-installer` binaries. Point `FFMPEG_PATH` / `FFPROBE_PATH` at a system
+FFmpeg is not required system-wide — the worker uses the bundled `ffmpeg-static`
+(FFmpeg 7.x) and `@ffprobe-installer` binaries. Point `FFMPEG_PATH` / `FFPROBE_PATH` at a system
 build if you prefer one (e.g. a hardware-accelerated ffmpeg).
 
 ## Quick start
@@ -45,6 +45,7 @@ Google OAuth client (see below). Every variable is documented in `.env.example`.
 | `pnpm db:reset` | drop and rebuild the dev database |
 | `pnpm test` | Vitest unit suite |
 | `pnpm typecheck` | TypeScript across every workspace package |
+| `pnpm fixtures` | regenerate the synthetic test album in `tests/fixtures/` |
 
 ## Layout
 
@@ -52,6 +53,7 @@ Google OAuth client (see below). Every variable is documented in `.env.example`.
 apps/web        Next.js 14 App Router — UI and API routes; enqueues, never renders
 apps/worker     BullMQ consumers — ingest, analyse, plan, tts, render
 packages/shared Zod schemas, brand/format constants, EDL rules (no runtime deps)
+packages/media  FFmpeg/sharp: probe, thumbnails, 720p proxies, colours, zip
 packages/db     Prisma client, AES-256-GCM token encryption, path helpers
 prisma/         schema.prisma, migrations, seed
 media/          ingested originals — written once, never modified
@@ -61,6 +63,28 @@ assets/music/   your licensed music library (see the README in that folder)
 
 Queues report progress by appending `JobEvent` rows; the web app streams those
 over SSE, so progress survives a page reload or a worker restart.
+
+## Ingest
+
+Drop files on the Library page — photos, videos, or a zip. The upload streams
+straight to `tmp/uploads/<batchId>/` (busboy, not `request.formData()`, so a 2 GB
+clip never sits in memory), then a worker job:
+
+1. checksums each file (sha256) and skips anything already in the library, so
+   re-uploading an album is safe;
+2. probes it — dimensions, duration, fps, audio, capture time, EXIF. Video
+   rotation flags are applied, so a phone clip recorded 1280×720 with a 90°
+   display matrix is catalogued as 720×1280 portrait;
+3. moves the original into `media/<assetId>/original.<ext>` and builds a
+   thumbnail, a 720p H.264 proxy for video, and a dominant-colour palette;
+4. reports progress the whole way, streamed to the browser over SSE.
+
+Anything unreadable is skipped with a warning rather than failing the batch, and
+a file that fails halfway is rolled back — no half-ingested rows in the grid.
+
+Consent defaults to *not cleared*. Tick the box at upload time if the batch is
+already cleared, or toggle assets individually in the grid. Nothing uncleared can
+reach a render.
 
 ## Configuration notes
 
@@ -103,7 +127,7 @@ note per track) is committed.
 ## Build progress
 
 1. ✅ Monorepo, Prisma schema, `.env.example`, `pnpm dev` orchestration
-2. ⬜ Direct-upload ingest → probe → catalogue
+2. ✅ Direct-upload ingest → probe → catalogue
 3. ⬜ Google Photos Picker + Drive folder ingest
 4. ⬜ AI descriptions and tags, with a cost estimate before running
 5. ⬜ Script → EDL planning with Zod validation
@@ -134,6 +158,13 @@ generating after a fresh clone (`pnpm setup` does it).
 **Ignored build scripts on install.** pnpm 10 blocks postinstall scripts by
 default; the allowed list is `pnpm.onlyBuiltDependencies` in the root
 `package.json`. If you add a package with a native build step, add it there.
+
+**A HEIC photo was skipped.** sharp's prebuilt libvips has no HEIC support, and
+the FFmpeg fallback cannot always decode it either. Export as JPEG, or point
+`FFMPEG_PATH` at a system FFmpeg built with libheif.
+
+**Uploads fail immediately with a size error.** `MAX_UPLOAD_MB` (default 2048)
+is per file, enforced while streaming.
 
 **Port 3000 is busy.** Set `WEB_PORT` in `.env`, and update `APP_URL` plus the
 Google redirect URI to match.

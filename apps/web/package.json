@@ -11,8 +11,10 @@
   },
   "dependencies": {
     "@reelforge/db": "workspace:*",
+    "@reelforge/media": "workspace:*",
     "@reelforge/shared": "workspace:*",
     "bullmq": "^5.34.6",
+    "busboy": "^1.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",
@@ -26,6 +28,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/busboy": "^1.5.4",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
