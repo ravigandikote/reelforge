@@ -54,6 +54,7 @@ apps/web        Next.js 14 App Router — UI and API routes; enqueues, never ren
 apps/worker     BullMQ consumers — ingest, analyse, plan, tts, render
 packages/shared Zod schemas, brand/format constants, EDL rules (no runtime deps)
 packages/media  FFmpeg/sharp: probe, thumbnails, 720p proxies, colours, zip
+packages/google OAuth (PKCE), Photos Picker sessions, Drive listing/download
 packages/db     Prisma client, AES-256-GCM token encryption, path helpers
 prisma/         schema.prisma, migrations, seed
 media/          ingested originals — written once, never modified
@@ -65,6 +66,12 @@ Queues report progress by appending `JobEvent` rows; the web app streams those
 over SSE, so progress survives a page reload or a worker restart.
 
 ## Ingest
+
+Four sources, all landing in the same catalogue: **Upload**, **Google Photos**,
+**Google Drive**, and (unsupported, flag-gated) **Share link**. Pick one on the
+Library page; `/library?source=photos` deep-links to a tab.
+
+### Upload
 
 Drop files on the Library page — photos, videos, or a zip. The upload streams
 straight to `tmp/uploads/<batchId>/` (busboy, not `request.formData()`, so a 2 GB
@@ -82,9 +89,40 @@ clip never sits in memory), then a worker job:
 Anything unreadable is skipped with a warning rather than failing the batch, and
 a file that fails halfway is rolled back — no half-ingested rows in the grid.
 
-Consent defaults to *not cleared*. Tick the box at upload time if the batch is
+### Google Photos
+
+Connect an account in Settings, then **Open Google Photos picker**. ReelForge
+creates a Picker session, opens Google's own picker in a new tab, and polls until
+you have finished choosing; the selection is then downloaded at full resolution
+(`=d` for photos, `=dv` for video — without those suffixes Google returns a
+stripped, resized preview) and catalogued exactly like an upload.
+
+This is the only supported way to read Google Photos: the Library API read scopes
+were removed in March 2025, so no app can browse your albums. ReelForge sees what
+you pick in the picker and nothing else.
+
+### Google Drive
+
+Paste a folder link (`/folders/…`, an `open?id=` link, or a bare id). Photos and
+videos directly inside the folder are listed with the Drive API and downloaded
+read-only. Shared drives work; the folder is not walked recursively.
+
+### Share link (unsupported)
+
+Behind `ENABLE_SHARE_LINK_SCRAPER=true`. Google publishes no API for public
+`photos.app.goo.gl` links, so this reads the page's HTML and pulls media URLs out
+of it. It will break whenever Google changes that page, and the UI says so. Use
+the picker.
+
+### Consent and failures
+
+Consent defaults to *not cleared*. Tick the box before ingesting if the batch is
 already cleared, or toggle assets individually in the grid. Nothing uncleared can
 reach a render.
+
+An item that cannot be downloaded or read is skipped with a warning; the rest of
+the batch still lands. Re-ingesting the same media is a no-op — files are deduped
+by sha256, so pulling the same album twice costs nothing but the download.
 
 ## Configuration notes
 
@@ -128,7 +166,7 @@ note per track) is committed.
 
 1. ✅ Monorepo, Prisma schema, `.env.example`, `pnpm dev` orchestration
 2. ✅ Direct-upload ingest → probe → catalogue
-3. ⬜ Google Photos Picker + Drive folder ingest
+3. ✅ Google Photos Picker + Drive folder ingest
 4. ⬜ AI descriptions and tags, with a cost estimate before running
 5. ⬜ Script → EDL planning with Zod validation
 6. ⬜ Remotion compositions for 16:9 and 9:16
@@ -158,6 +196,23 @@ generating after a fresh clone (`pnpm setup` does it).
 **Ignored build scripts on install.** pnpm 10 blocks postinstall scripts by
 default; the allowed list is `pnpm.onlyBuiltDependencies` in the root
 `package.json`. If you add a package with a native build step, add it there.
+
+**Google says `redirect_uri_mismatch`.** The OAuth client's authorised redirect
+URI must match `GOOGLE_REDIRECT_URI` exactly, including the port and the trailing
+path — `http://localhost:3000/api/auth/google/callback`. The Settings page shows
+the value the app will send.
+
+**"State mismatch" after consenting.** The handshake finished in a different
+browser (or the cookies were cleared). Start again from Settings; the PKCE
+verifier and state live in HttpOnly cookies for ten minutes.
+
+**Google returns 403 on the picker.** Enable the **Photos Picker API** for the
+project, and check the consent screen actually granted
+`photospicker.mediaitems.readonly` — a scope added after the first consent needs
+a reconnect.
+
+**Downloads come back small or without EXIF.** Something dropped the `=d` / `=dv`
+suffix on the Picker `baseUrl`; that is what asks Google for the original bytes.
 
 **A HEIC photo was skipped.** sharp's prebuilt libvips has no HEIC support, and
 the FFmpeg fallback cannot always decode it either. Export as JPEG, or point

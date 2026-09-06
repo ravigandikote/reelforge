@@ -17,11 +17,7 @@ import {
 } from '@reelforge/media'
 import { ingestJobSchema, type IngestJobData } from '@reelforge/shared'
 import { markStatus, report } from '../progress.js'
-
-interface StagedFile {
-  filePath: string
-  displayName: string
-}
+import { fetchRemoteItems, type StagedFile } from './fetchRemote.js'
 
 /**
  * Upload ingest: expand any archives, then for each file probe it, move it into
@@ -36,18 +32,25 @@ export async function runIngest(raw: unknown): Promise<void> {
   await prisma.ingestBatch.update({ where: { id: batchId }, data: { status: 'running' } })
 
   try {
-    const staged = await expandArchives(data.items)
-    if (staged.length === 0) throw new Error('No supported media found in the upload')
+    const { staged, failures } = await collect(data, jobId)
+    if (staged.length === 0) {
+      throw new Error(
+        failures.length
+          ? `Nothing could be ingested:\n${failures.join('\n')}`
+          : 'No supported media found in this batch',
+      )
+    }
 
-    await report(jobId, 2, `Cataloguing ${staged.length} file${staged.length === 1 ? '' : 's'}…`)
+    // Downloading takes the first third of the bar for remote sources.
+    const floor = data.remoteItems.length > 0 ? 35 : 5
+    await report(jobId, floor, `Cataloguing ${staged.length} file${staged.length === 1 ? '' : 's'}…`)
 
     let created = 0
     let duplicates = 0
-    const failures: string[] = []
 
     for (const [index, file] of staged.entries()) {
-      // Each file owns a slice of the progress bar, from 5% to 98%.
-      const slice = (n: number) => 5 + ((index + n) / staged.length) * 93
+      // Each file owns a slice of the remaining bar, ending at 98%.
+      const slice = (n: number) => floor + ((index + n) / staged.length) * (98 - floor)
 
       try {
         const outcome = await ingestOne(file, batchId, data.markCleared, (n, message) =>
@@ -95,6 +98,33 @@ export async function runIngest(raw: unknown): Promise<void> {
   } finally {
     await cleanupStaging(batchId)
   }
+}
+
+/** Puts every source into the same shape: files on disk, ready to catalogue. */
+async function collect(
+  data: IngestJobData,
+  jobId: string,
+): Promise<{ staged: StagedFile[]; failures: string[] }> {
+  if (data.remoteItems.length > 0) {
+    const label =
+      data.source === 'google_drive'
+        ? 'Google Drive'
+        : data.source === 'share_link'
+          ? 'the share link'
+          : 'Google Photos'
+    await report(jobId, 2, `Fetching ${data.remoteItems.length} item(s) from ${label}…`)
+
+    const { staged, failures } = await fetchRemoteItems(data, (fraction, message) =>
+      report(jobId, 2 + fraction * 31, message),
+    )
+    for (const failure of failures) {
+      await report(jobId, 34, `Skipped ${failure}`, { level: 'warn' })
+    }
+    // A downloaded zip is still a zip; expanding here keeps Drive folders usable.
+    return { staged: await expandArchives(staged.map((s) => s.filePath)), failures }
+  }
+
+  return { staged: await expandArchives(data.items), failures: [] }
 }
 
 /** Zips are unpacked next to themselves; everything else passes straight through. */

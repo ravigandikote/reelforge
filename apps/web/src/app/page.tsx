@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 const BUILD_STEPS: { step: number; label: string; done: boolean }[] = [
   { step: 1, label: 'Monorepo, Prisma schema, dev orchestration', done: true },
   { step: 2, label: 'Direct-upload ingest → probe → catalogue', done: true },
-  { step: 3, label: 'Google Photos Picker + Drive ingest', done: false },
+  { step: 3, label: 'Google Photos Picker + Drive ingest', done: true },
   { step: 4, label: 'AI descriptions and tags', done: false },
   { step: 5, label: 'Script → EDL planning', done: false },
   { step: 6, label: 'Remotion compositions', done: false },

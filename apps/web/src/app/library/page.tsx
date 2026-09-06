@@ -1,14 +1,19 @@
 import Link from 'next/link'
 import { fromJson, prisma } from '@reelforge/db'
 import { SUPPORTED_EXTENSIONS } from '@reelforge/media/mime'
+import { connectedAccount, isGoogleConfigured } from '@reelforge/google'
+import { getEnv } from '@reelforge/shared/env'
 import { AssetCard, type AssetSummary } from '@/components/AssetCard'
-import { UploadPanel } from '@/components/UploadPanel'
+import { IngestPanel } from '@/components/IngestPanel'
 import { Badge } from '@/components/ui/badge'
 import { formatBytes } from '@/lib/format'
 
 export const dynamic = 'force-dynamic'
 
 type Filters = { kind?: string; orientation?: string; consent?: string }
+type SearchParams = Filters & { source?: string }
+
+const SOURCE_TABS = ['upload', 'photos', 'drive', 'share'] as const
 
 const KIND_FILTERS = [
   { value: undefined, label: 'All media' },
@@ -66,7 +71,7 @@ function FilterRow({
   )
 }
 
-export default async function LibraryPage({ searchParams }: { searchParams: Filters }) {
+export default async function LibraryPage({ searchParams }: { searchParams: SearchParams }) {
   const filters: Filters = {
     kind: searchParams.kind,
     orientation: searchParams.orientation,
@@ -82,6 +87,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Filt
         ? { consentCleared: false }
         : {}),
   }
+
+  const googleConfigured = isGoogleConfigured()
+  const account = googleConfigured ? await connectedAccount() : null
 
   const [assets, total, cleared, bytes] = await Promise.all([
     prisma.asset.findMany({ where, orderBy: [{ capturedAt: 'desc' }, { createdAt: 'desc' }], take: 200 }),
@@ -121,7 +129,17 @@ export default async function LibraryPage({ searchParams }: { searchParams: Filt
         )}
       </header>
 
-      <UploadPanel accept={[...SUPPORTED_EXTENSIONS, '.zip'].join(',')} />
+      <IngestPanel
+        accept={[...SUPPORTED_EXTENSIONS, '.zip'].join(',')}
+        googleConfigured={googleConfigured}
+        googleEmail={account?.email ?? null}
+        shareLinkEnabled={getEnv().ENABLE_SHARE_LINK_SCRAPER}
+        initialTab={
+          SOURCE_TABS.includes(searchParams.source as (typeof SOURCE_TABS)[number])
+            ? (searchParams.source as (typeof SOURCE_TABS)[number])
+            : 'upload'
+        }
+      />
 
       <div className="flex flex-wrap gap-x-6 gap-y-2">
         <FilterRow current={filters} filterKey="kind" options={KIND_FILTERS} />

@@ -30,12 +30,28 @@ export const QUEUE_NAMES = {
   render: 'reelforge-render',
 } as const
 
+/** One item to fetch from Google Photos, Drive, or a share link. */
+export const remoteItemSchema = z.object({
+  /** Picker media item id, Drive file id, or a positional id for share links. */
+  id: z.string(),
+  name: z.string(),
+  mimeType: z.string(),
+  kind: z.enum(['photo', 'video']),
+  /** Picker baseUrl or a direct URL. Null for Drive, which fetches by id. */
+  url: z.string().nullable().default(null),
+})
+export type RemoteItem = z.infer<typeof remoteItemSchema>
+
 export const ingestJobSchema = z.object({
   jobId: z.string(),
   batchId: z.string(),
   source: ingestSourceSchema,
-  /** Upload: absolute staging paths. Picker/Drive: remote item ids. */
+  /** Upload only: absolute staging paths already written to disk. */
   items: z.array(z.string()).default([]),
+  /** Picker, Drive and share-link sources: what to download before cataloguing. */
+  remoteItems: z.array(remoteItemSchema).default([]),
+  /** Which connected Google account to authenticate the downloads with. */
+  accountId: z.string().nullable().default(null),
   externalRef: z.string().nullable().default(null),
   /** Set when the uploader confirms the batch is already consent-cleared. */
   markCleared: z.boolean().default(false),
