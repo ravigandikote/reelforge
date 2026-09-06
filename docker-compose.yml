@@ -1,0 +1,19 @@
+# Redis backs the BullMQ queues (ingest / analyze / plan / tts / render).
+# The database is local SQLite, so nothing else needs a container.
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: reelforge-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  redis-data:

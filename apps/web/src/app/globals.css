@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Marcellus&family=Poppins:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 45% 91%;      /* cream  #F4EBDA */
+    --foreground: 217 46% 21%;     /* indigo #1A2A46 */
+    --card: 40 45% 95%;
+    --card-foreground: 217 46% 21%;
+    --primary: 217 46% 21%;
+    --primary-foreground: 40 45% 91%;
+    --secondary: 18 53% 48%;       /* terracotta #BE5F3A */
+    --secondary-foreground: 40 45% 96%;
+    --muted: 40 25% 85%;
+    --muted-foreground: 217 20% 40%;
+    --border: 40 20% 80%;
+    --ring: 18 53% 48%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-cream text-indigo font-body antialiased;
+  }
+}

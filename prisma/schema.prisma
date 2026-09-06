@@ -1,0 +1,286 @@
+// NAV ReelForge schema.
+//
+// Local dev runs on SQLite; the schema is deliberately Postgres-compatible:
+//  - no Prisma `enum` and no scalar lists (neither is supported on SQLite) —
+//    those fields are `String`, validated by the Zod unions in @reelforge/shared
+//  - structured values are stored as JSON strings in `*Json` columns
+// Moving to Postgres is a provider + URL change, no model changes.
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../packages/db/generated/client"
+}
+
+/// Google OAuth credentials. Tokens are AES-256-GCM ciphertext (see @reelforge/db crypto).
+model GoogleAccount {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime?
+  scopes        String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  ingestBatches IngestBatch[]
+}
+
+/// One ingest run: an upload, a Picker session, a Drive folder, or a share link.
+model IngestBatch {
+  id          String         @id @default(cuid())
+  source      String
+  externalRef String?
+  status      String         @default("pending")
+  itemCount   Int            @default(0)
+  error       String?
+  accountId   String?
+  account     GoogleAccount? @relation(fields: [accountId], references: [id])
+  assets      Asset[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([status])
+}
+
+/// A catalogued photo or video. `storagePath` is written once at ingest and never modified.
+model Asset {
+  id           String       @id @default(cuid())
+  batchId      String?
+  batch        IngestBatch? @relation(fields: [batchId], references: [id])
+  kind         String
+  originalName String
+  storagePath  String       @unique
+  proxyPath    String?
+  thumbPath    String?
+  mimeType     String
+  bytes        Int
+  /// sha256 of the original bytes — makes re-ingesting the same album idempotent.
+  checksum     String
+  width        Int
+  height       Int
+  orientation  String
+  durationSec  Float?
+  fps          Float?
+  hasAudio     Boolean      @default(false)
+  capturedAt   DateTime?
+  exifJson     String?
+  /// JSON array of hex colours, most dominant first.
+  dominantColorsJson String?
+
+  // --- AI analysis (build step 4) ---
+  description   String?
+  peopleCount   Int?
+  /// Normalised 0..1 subject centre, used for smart cropping landscape -> portrait.
+  focalPointX   Float?
+  focalPointY   Float?
+  analysisModel String?
+  analyzedAt    DateTime?
+
+  // --- Governance ---
+  /// Only assets with consentCleared = true may enter a render.
+  consentCleared Boolean @default(false)
+  /// Images containing the Indian flag: never overlaid, never ken-burnsed or cropped.
+  hasIndianFlag  Boolean @default(false)
+  excluded       Boolean @default(false)
+  notes          String?
+
+  tags      AssetTag[]
+  segments  Segment[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([kind, consentCleared])
+  @@index([capturedAt])
+  @@index([checksum])
+  @@index([batchId])
+}
+
+model Tag {
+  id     String     @id @default(cuid())
+  slug   String     @unique
+  label  String
+  group  String
+  assets AssetTag[]
+}
+
+model AssetTag {
+  assetId    String
+  tagId      String
+  confidence Float?
+  /// "ai" | "human" — human tags win and are never overwritten by a re-analysis.
+  source     String @default("ai")
+  asset      Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  tag        Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([assetId, tagId])
+  @@index([tagId])
+}
+
+model BrandKit {
+  id           String    @id @default(cuid())
+  name         String    @unique
+  isDefault    Boolean   @default(false)
+  colorsJson   String
+  fontsJson    String
+  logoPath     String?
+  /// Tree emblem used alone below 120px.
+  logoMarkPath String?
+  handle       String    @default("@neerav_arts_village")
+  website      String    @default("www.neeravartsvillage.com")
+  projects     Project[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model MusicTrack {
+  id          String    @id @default(cuid())
+  title       String
+  path        String    @unique
+  durationSec Float
+  bpm         Int?
+  mood        String?
+  license     String?
+  projects    Project[]
+  createdAt   DateTime  @default(now())
+}
+
+model Project {
+  id            String      @id @default(cuid())
+  title         String
+  script        String
+  /// JSON array of target ids, e.g. ["youtube_16x9","portrait_9x16_30"].
+  targetsJson   String
+  voiceEnabled  Boolean     @default(true)
+  voiceId       String?
+  /// Consent filter is on by default: uncleared assets are invisible to the planner.
+  consentFilter Boolean     @default(true)
+  brandKitId    String?
+  brandKit      BrandKit?   @relation(fields: [brandKitId], references: [id])
+  musicTrackId  String?
+  musicTrack    MusicTrack? @relation(fields: [musicTrackId], references: [id])
+  edls          Edl[]
+  jobs          Job[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+/// One edit decision list per target duration. Each is a real re-edit, not a truncation.
+model Edl {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  target        String
+  targetSeconds Float
+  actualSeconds Float
+  version       Int       @default(1)
+  model         String?
+  promptTokens  Int?
+  outputTokens  Int?
+  /// The exact LLM payload after Zod validation, kept for debugging and regenerate.
+  rawJson       String
+  segments      Segment[]
+  renders       Render[]
+  createdAt     DateTime  @default(now())
+
+  @@unique([projectId, target, version])
+}
+
+model Segment {
+  id            String        @id @default(cuid())
+  edlId         String
+  edl           Edl           @relation(fields: [edlId], references: [id], onDelete: Cascade)
+  index         Int
+  startSec      Float
+  endSec        Float
+  assetId       String
+  asset         Asset         @relation(fields: [assetId], references: [id])
+  motion        String
+  /// In/out points within the source video.
+  trimStartSec  Float?
+  trimEndSec    Float?
+  captionText   String?
+  voiceoverText String?
+  /// Normalised {x,y,w,h} crop derived from the asset focal point.
+  cropJson      String?
+  regenCount    Int           @default(0)
+  words         CaptionWord[]
+
+  @@unique([edlId, index])
+  @@index([assetId])
+}
+
+/// Word-level alignment from the ElevenLabs timestamps endpoint, for burned-in captions.
+model CaptionWord {
+  id        String  @id @default(cuid())
+  segmentId String
+  segment   Segment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  word      String
+  startSec  Float
+  endSec    Float
+
+  @@index([segmentId, startSec])
+}
+
+model Job {
+  id         String     @id @default(cuid())
+  projectId  String?
+  project    Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type       String
+  target     String?
+  status     String     @default("queued")
+  progress   Int        @default(0)
+  message    String?
+  error      String?
+  queueJobId String?
+  costCents  Int?
+  startedAt  DateTime?
+  finishedAt DateTime?
+  events     JobEvent[]
+  renders    Render[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([status, type])
+  @@index([projectId])
+}
+
+/// Append-only progress log. The SSE endpoint reads these, so progress survives
+/// a worker restart and a browser reload.
+model JobEvent {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  level     String   @default("info")
+  progress  Int?
+  message   String
+  dataJson  String?
+  createdAt DateTime @default(now())
+
+  @@index([jobId, createdAt])
+}
+
+model Render {
+  id          String   @id @default(cuid())
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  edlId       String
+  edl         Edl      @relation(fields: [edlId], references: [id])
+  target      String
+  width       Int
+  height      Int
+  durationSec Float
+  videoPath   String
+  srtPath     String?
+  vttPath     String?
+  thumbPath   String?
+  voicePath   String?
+  bytes       Int?
+  createdAt   DateTime @default(now())
+
+  @@index([edlId])
+  @@index([jobId])
+}

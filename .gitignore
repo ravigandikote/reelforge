@@ -1,0 +1,32 @@
+node_modules/
+.next/
+dist/
+out/
+.turbo/
+
+# secrets
+.env
+.env.local
+.env.*.local
+
+# data — never commit media, renders, or the dev database
+media/
+renders/
+*.db
+*.db-journal
+prisma/dev.db*
+packages/db/generated/
+
+# licensed music: keep the manifest, not the audio
+assets/music/*
+!assets/music/manifest.json
+!assets/music/README.md
+
+# logs / os
+*.log
+.DS_Store
+coverage/
+
+# redis snapshot if you run redis-server from the repo root
+dump.rdb
+*.tsbuildinfo
