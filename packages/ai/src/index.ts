@@ -5,6 +5,7 @@ export {
   type DescribeResult,
   type VisionInput,
 } from './describeAsset.js'
+export { planEdl, type PlanInput, type PlanResult } from './planEdl.js'
 export {
   estimateAnalysis,
   FRAMES_PER_VIDEO,

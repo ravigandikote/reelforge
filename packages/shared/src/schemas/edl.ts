@@ -47,3 +47,23 @@ export const edlPlanResponseSchema = z.object({
   edls: z.array(edlSchema).min(1),
 })
 export type EdlPlanResponse = z.infer<typeof edlPlanResponseSchema>
+
+/**
+ * What the planner is asked to return: segment lengths, not timeline positions.
+ * The tool schema already constrains this shape, so a parse failure here means
+ * the model drifted from its own schema — worth failing the cut over.
+ */
+export const plannedSegmentSchema = z.object({
+  assetId: z.string().min(1),
+  durationSec: z.number().positive().max(60),
+  motion: motionSchema,
+  trimStartSec: z.number().min(0).nullish().default(null),
+  captionText: z.string().nullish().default(null),
+  voiceoverText: z.string().nullish().default(null),
+})
+
+export const planResponseSchema = z.object({
+  titleText: z.string().nullish().default(null),
+  segments: z.array(plannedSegmentSchema).min(1),
+})
+export type PlanResponse = z.infer<typeof planResponseSchema>

@@ -30,6 +30,8 @@ const envSchema = z.object({
   ANTHROPIC_VISION_MODEL: z.string().default('claude-opus-5'),
   /** Vision tagging is a classification task; low effort keeps a library-wide run cheap. */
   ANTHROPIC_VISION_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).default('low'),
+  /** Planning the edit is the quality-critical call — worth the extra thinking. */
+  ANTHROPIC_PLANNING_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).default('high'),
   ANTHROPIC_PLANNING_MODEL: z.string().default('claude-opus-5'),
   AI_MAX_BATCH_COST_USD: z.coerce.number().default(5),
 

@@ -27,6 +27,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/library" className="text-indigo/70 hover:text-indigo">
                   Library
                 </Link>
+                <Link href="/projects" className="text-indigo/70 hover:text-indigo">
+                  Projects
+                </Link>
                 <Link href="/settings" className="text-indigo/70 hover:text-indigo">
                   Settings
                 </Link>

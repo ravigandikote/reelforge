@@ -155,6 +155,46 @@ grid and are excluded from cropping and overlays downstream.
 The actual cost of each run is recorded on the job, so the job history doubles as
 a spend log.
 
+## Planning the edit
+
+A project is a script plus a set of output lengths. **Plan the edit** sends the
+script and the catalogue to the planning model and gets back one edit per
+length — one call per target, so the 30-second cut is a genuine re-edit rather
+than the first 30 seconds of the 90. The script and catalogue are identical
+across those calls, so everything after the first is served from the prompt
+cache.
+
+The model returns segment *lengths*, not timeline positions. A model doing
+running arithmetic over twenty segments will eventually produce a gap or an
+overlap, and there is no reason to let it try when the cumulative sum is exact
+in code. The timeline, the trim out-points and the duration fitting are all
+computed here:
+
+- fixed-length cuts are retimed onto their target — segments scale
+  proportionally, clamped to what each asset can support, with the remainder
+  redistributed — and land exactly on 30, 60 or 90 seconds;
+- the 16:9 cut runs to the length of the script, and is only clamped, so a
+  four-second clip is never asked to play for four and a half.
+
+Then `validateEdl` enforces what the prompt merely requested. Prompts are
+requests; this is the gate:
+
+| Rule | What happens |
+| --- | --- |
+| Uncleared asset | **Error** — the cut is marked blocked and cannot be rendered |
+| Asset containing the Indian flag | Motion forced to `hold`, caption stripped, both reported |
+| Photo given a trim, clip given a ken-burns | Corrected to the motion that makes sense |
+| Shot under 1.2s, or a caption under 1.2s | **Error** |
+| Trim running past the end of its clip | **Error** |
+| Cut outside ±0.5s of its target | **Error** |
+
+Corrections are warnings and the cut still renders; errors block it. Every plan
+is stored either way — a blocked cut is easier to fix when you can see it — and
+re-planning keeps the old version rather than overwriting it.
+
+The project page shows each cut as a timeline strip and a segment table (in/out,
+asset, motion, caption, voiceover), with the raw model JSON one click away.
+
 ## Configuration notes
 
 **Database.** SQLite in dev (`prisma/dev.db`). The schema avoids Prisma enums and
@@ -199,7 +239,7 @@ note per track) is committed.
 2. ✅ Direct-upload ingest → probe → catalogue
 3. ✅ Google Photos Picker + Drive folder ingest
 4. ✅ AI descriptions and tags, with a cost estimate before running
-5. ⬜ Script → EDL planning with Zod validation
+5. ✅ Script → EDL planning with Zod validation
 6. ⬜ Remotion compositions for 16:9 and 9:16
 7. ⬜ ElevenLabs voiceover, word alignment, SRT/VTT, music ducking
 8. ⬜ End-to-end pipeline: progress, preview, per-segment regenerate, download
