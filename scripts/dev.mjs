@@ -36,7 +36,9 @@ async function ensureRedis() {
   log('dev', 'starting Redis (docker compose up -d redis)…')
   const res = spawnSync('docker', ['compose', 'up', '-d', 'redis'], { cwd: root, stdio: 'inherit' })
   if (res.status !== 0) {
-    log('dev', 'Could not start Redis via Docker. Start it yourself, or set REDIS_URL to a running instance.')
+    log('dev', 'Could not start Redis with Docker. Either start Docker, or run Redis directly:')
+    log('dev', `  redis-server --port ${REDIS_PORT}`)
+    log('dev', 'Already have one somewhere else? Point REDIS_URL at it in .env.')
     process.exit(1)
   }
   for (let i = 0; i < 30; i++) {
@@ -56,7 +58,7 @@ function ensurePrismaClient() {
 
 function ensureEnv() {
   if (existsSync(path.join(root, '.env'))) return
-  log('dev', 'No .env found. Run `pnpm setup` first.')
+  log('dev', 'No .env found. Run `pnpm bootstrap` first.')
   process.exit(1)
 }
 

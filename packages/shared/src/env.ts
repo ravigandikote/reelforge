@@ -75,7 +75,7 @@ export function getEnv(): Env {
     const issues = parsed.error.issues
       .map((i) => `  - ${i.path.join('.')}: ${i.message}`)
       .join('\n')
-    throw new Error(`Invalid environment.\n${issues}\n\nCopy .env.example to .env and run \`pnpm setup\`.`)
+    throw new Error(`Invalid environment.\n${issues}\n\nCopy .env.example to .env and run \`pnpm bootstrap\`.`)
   }
   cached = parsed.data
   return cached

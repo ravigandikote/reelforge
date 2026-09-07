@@ -3,6 +3,12 @@
  * One-shot local setup: .env with generated secrets, working directories,
  * Prisma client + migration + seed. Safe to re-run — it never overwrites an
  * existing secret.
+ *
+ *   pnpm bootstrap
+ *
+ * Named "bootstrap" rather than "setup" because `pnpm setup` is a built-in
+ * pnpm command that configures pnpm's own home directory, and it would run
+ * that instead of this.
  */
 import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'

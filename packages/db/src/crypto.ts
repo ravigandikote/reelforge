@@ -8,7 +8,7 @@ function key(): Buffer {
   const raw = process.env.ENCRYPTION_KEY
   if (!raw) {
     throw new Error(
-      'ENCRYPTION_KEY is not set. Run `pnpm setup` or generate one:\n' +
+      'ENCRYPTION_KEY is not set. Run `pnpm bootstrap` or generate one:\n' +
         '  node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'base64\'))"',
     )
   }

@@ -80,7 +80,7 @@ export default async function HomePage() {
             </div>
             {!stats.ok && (
               <p className="pt-2 text-xs text-red-800">
-                {stats.error} — run <code className="font-mono">pnpm setup</code>.
+                {stats.error} — run <code className="font-mono">pnpm bootstrap</code>.
               </p>
             )}
             {!redis && (

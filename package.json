@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "bootstrap": "node scripts/setup.mjs",
     "dev:web": "pnpm --filter @reelforge/web dev",
     "dev:worker": "pnpm --filter @reelforge/worker dev",
     "redis:up": "docker compose up -d redis",
@@ -25,7 +26,6 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
-    "setup": "node scripts/setup.mjs",
     "fixtures": "tsx scripts/make-fixtures.mts",
     "sample": "tsx scripts/render-sample.mts",
     "fonts:fetch": "tsx scripts/fetch-fonts.mts",

@@ -8,7 +8,7 @@ import { getEnv } from '@reelforge/shared/env'
  */
 function secret(): string {
   const value = getEnv().SESSION_SECRET
-  if (!value) throw new Error('SESSION_SECRET is not set — run `pnpm setup`')
+  if (!value) throw new Error('SESSION_SECRET is not set — run `pnpm bootstrap`')
   return value
 }
 

@@ -8,5 +8,10 @@ export default defineConfig({
     exclude: ['**/node_modules/**', 'tests/e2e/**'],
     environment: 'node',
     globals: false,
+    // Several tests shell out to ffmpeg or load sharp's native binding. The 5s
+    // default is enough once those are warm and not on the first run after a
+    // clone, which is the run a newcomer sees.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
   },
 })
