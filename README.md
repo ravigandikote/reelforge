@@ -282,6 +282,32 @@ Without a key, captions still work: turn voiceover off and cues are timed from
 the edit instead. `pnpm sample --voice` renders the sample with a synthetic
 narration track so the word-by-word highlighting can be seen offline.
 
+## Making the films
+
+**Make the films** on a project runs the whole pipeline: plan whatever is not
+planned yet, narrate each cut, render it, and write a thumbnail. It is one job
+with one progress bar, but each stage is its own child job, so the history says
+which stage failed rather than just that something did.
+
+Nothing is re-done needlessly. A cut that is already planned is reused, and
+narration is only re-recorded when the cut changed — **Re-plan first** forces
+the lot. Rendering an already-planned project needs no API key at all.
+
+**Consent is checked again at render time**, against the assets as they are now.
+The stored plan is a snapshot; consent is not. If someone withdraws consent after
+a cut is planned, the render fails with the segment named rather than quietly
+using the asset.
+
+**↻ on any row re-plans that one shot.** The slot keeps its length, so the film's
+duration and every other segment's timing are untouched — it is a swap, not a
+re-edit. The replacement is validated against the whole cut before it is written,
+so it cannot introduce an uncleared asset or a trim past the end of a clip, and
+the word timings for the old line are dropped.
+
+Finished films appear on the project page with a player (captions attached),
+and download links for the MP4, `.srt`, `.vtt` and thumbnail. Everything lands in
+`renders/<jobId>/`.
+
 ## Configuration notes
 
 **Database.** SQLite in dev (`prisma/dev.db`). The schema avoids Prisma enums and
@@ -329,7 +355,7 @@ note per track) is committed.
 5. ✅ Script → EDL planning with Zod validation
 6. ✅ Remotion compositions for 16:9 and 9:16
 7. ✅ ElevenLabs voiceover, word alignment, SRT/VTT, music ducking
-8. ⬜ End-to-end pipeline: progress, preview, per-segment regenerate, download
+8. ✅ End-to-end pipeline: progress, preview, per-segment regenerate, download
 9. ⬜ Tests: EDL validation, duration fitting, fixture-album end-to-end
 10. ⬜ Full README and troubleshooting
 

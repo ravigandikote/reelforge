@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { RegenerateButton } from '@/components/RegenerateButton'
 import { VoiceButton } from '@/components/VoiceButton'
 
 export interface EdlIssueView {
@@ -12,6 +13,7 @@ export interface EdlIssueView {
 }
 
 export interface EdlSegmentView {
+  id: string
   index: number
   startSec: number
   endSec: number
@@ -147,7 +149,8 @@ export function EdlViewer({ edl }: { edl: EdlView }) {
                   <th className="pb-2 pr-3 font-medium">Asset</th>
                   <th className="pb-2 pr-3 font-medium">Motion</th>
                   <th className="pb-2 pr-3 font-medium">Caption</th>
-                  <th className="pb-2 font-medium">Voiceover</th>
+                  <th className="pb-2 pr-3 font-medium">Voiceover</th>
+                  <th className="pb-2 font-medium sr-only">Actions</th>
                 </tr>
               </thead>
               <tbody className="align-top">
@@ -187,8 +190,11 @@ export function EdlViewer({ edl }: { edl: EdlView }) {
                     <td className="max-w-[12rem] py-2 pr-3 text-indigo/70">
                       {segment.captionText ?? <span className="text-indigo/25">—</span>}
                     </td>
-                    <td className="max-w-[16rem] py-2 text-indigo/60">
+                    <td className="max-w-[16rem] py-2 pr-3 text-indigo/60">
                       {segment.voiceoverText ?? <span className="text-indigo/25">—</span>}
+                    </td>
+                    <td className="py-2 text-right">
+                      <RegenerateButton segmentId={segment.id} />
                     </td>
                   </tr>
                 ))}

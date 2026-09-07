@@ -8,6 +8,7 @@ export const queues = {
   plan: new Queue(QUEUE_NAMES.plan, { connection }),
   tts: new Queue(QUEUE_NAMES.tts, { connection }),
   render: new Queue(QUEUE_NAMES.render, { connection }),
+  pipeline: new Queue(QUEUE_NAMES.pipeline, { connection }),
 }
 
 /** Each worker gets its own blocking connection — BullMQ cannot share one. */

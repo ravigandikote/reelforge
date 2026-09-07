@@ -8,38 +8,22 @@ loadEnv({ path: path.join(repoRoot(), '.env') })
 const { getEnv } = await import('@reelforge/shared/env')
 const { QUEUE_NAMES } = await import('@reelforge/shared')
 const { registerWorker } = await import('./queues.js')
-const { markStatus, report } = await import('./progress.js')
 const { runIngest } = await import('./jobs/ingest.js')
 const { runAnalyze } = await import('./jobs/analyze.js')
 const { runPlan } = await import('./jobs/plan.js')
 const { runTts } = await import('./jobs/tts.js')
+const { runRender } = await import('./jobs/render.js')
+const { runPipeline } = await import('./jobs/pipeline.js')
 
 const env = getEnv()
-
-/**
- * Build step 8 replaces the remaining placeholder one queue at a time. Each
- * keeps the same contract: mark the job running, report progress, mark it
- * succeeded or failed.
- */
-function placeholder(queue: string, step: string) {
-  return async (job: { data: { jobId?: string } }) => {
-    const jobId = job.data?.jobId
-    const note = `${queue} is not implemented yet (build ${step})`
-    if (jobId) {
-      await markStatus(jobId, 'running')
-      await report(jobId, 0, note, { level: 'warn' })
-      await markStatus(jobId, 'failed', { error: note })
-    }
-    throw new Error(note)
-  }
-}
 
 const workers = [
   registerWorker(QUEUE_NAMES.ingest, (job) => runIngest(job.data), 2),
   registerWorker(QUEUE_NAMES.analyze, (job) => runAnalyze(job.data), 1),
   registerWorker(QUEUE_NAMES.plan, (job) => runPlan(job.data), 1),
   registerWorker(QUEUE_NAMES.tts, (job) => runTts(job.data), 1),
-  registerWorker(QUEUE_NAMES.render, placeholder('render', 'step 6'), env.RENDER_CONCURRENCY),
+  registerWorker(QUEUE_NAMES.render, (job) => runRender(job.data), env.RENDER_CONCURRENCY),
+  registerWorker(QUEUE_NAMES.pipeline, (job) => runPipeline(job.data), 1),
 ]
 
 async function main() {

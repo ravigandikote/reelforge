@@ -26,6 +26,7 @@ export function getQueues() {
     plan: new Queue(QUEUE_NAMES.plan, { connection: connection() }),
     tts: new Queue(QUEUE_NAMES.tts, { connection: connection() }),
     render: new Queue(QUEUE_NAMES.render, { connection: connection() }),
+    pipeline: new Queue(QUEUE_NAMES.pipeline, { connection: connection() }),
   }
   return globalForQueues.reelforgeQueues
 }

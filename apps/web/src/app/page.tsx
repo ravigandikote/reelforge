@@ -15,7 +15,7 @@ const BUILD_STEPS: { step: number; label: string; done: boolean }[] = [
   { step: 5, label: 'Script → EDL planning', done: true },
   { step: 6, label: 'Remotion compositions', done: true },
   { step: 7, label: 'TTS, word alignment, SRT, music ducking', done: true },
-  { step: 8, label: 'End-to-end pipeline with preview and download', done: false },
+  { step: 8, label: 'End-to-end pipeline with preview and download', done: true },
   { step: 9, label: 'Tests', done: false },
   { step: 10, label: 'README and troubleshooting', done: false },
 ]

@@ -28,6 +28,7 @@ export const QUEUE_NAMES = {
   plan: 'reelforge-plan',
   tts: 'reelforge-tts',
   render: 'reelforge-render',
+  pipeline: 'reelforge-pipeline',
 } as const
 
 /** One item to fetch from Google Photos, Drive, or a share link. */
@@ -83,6 +84,15 @@ export const renderJobSchema = z.object({
   target: z.enum(RENDER_TARGETS),
 })
 export type RenderJobData = z.infer<typeof renderJobSchema>
+
+export const pipelineJobSchema = z.object({
+  jobId: z.string(),
+  projectId: z.string(),
+  targets: z.array(z.enum(RENDER_TARGETS)).min(1),
+  /** Re-plan even where a cut already exists. */
+  replan: z.boolean().default(false),
+})
+export type PipelineJobData = z.infer<typeof pipelineJobSchema>
 
 /** Shape pushed over SSE to the job progress UI. */
 export const jobProgressEventSchema = z.object({

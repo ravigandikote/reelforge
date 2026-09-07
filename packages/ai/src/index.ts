@@ -7,6 +7,11 @@ export {
 } from './describeAsset.js'
 export { planEdl, type PlanInput, type PlanResult } from './planEdl.js'
 export {
+  regenerateSegment,
+  type RegenerateInput,
+  type RegenerateResult,
+} from './regenerateSegment.js'
+export {
   estimateAnalysis,
   FRAMES_PER_VIDEO,
   type CostEstimate,
