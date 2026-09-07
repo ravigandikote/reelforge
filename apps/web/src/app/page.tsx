@@ -11,7 +11,7 @@ const BUILD_STEPS: { step: number; label: string; done: boolean }[] = [
   { step: 1, label: 'Monorepo, Prisma schema, dev orchestration', done: true },
   { step: 2, label: 'Direct-upload ingest → probe → catalogue', done: true },
   { step: 3, label: 'Google Photos Picker + Drive ingest', done: true },
-  { step: 4, label: 'AI descriptions and tags', done: false },
+  { step: 4, label: 'AI descriptions and tags', done: true },
   { step: 5, label: 'Script → EDL planning', done: false },
   { step: 6, label: 'Remotion compositions', done: false },
   { step: 7, label: 'TTS, word alignment, SRT, music ducking', done: false },

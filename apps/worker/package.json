@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@reelforge/ai": "workspace:*",
     "@reelforge/db": "workspace:*",
     "@reelforge/google": "workspace:*",
     "@reelforge/media": "workspace:*",

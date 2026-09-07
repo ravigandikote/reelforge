@@ -4,6 +4,7 @@ export { dominantColors } from './colors.js'
 export { probeFile, probeImage, probeVideo } from './probe.js'
 export { imageThumbnail, videoThumbnail, THUMB_WIDTH } from './thumbnail.js'
 export { makeProxy, PROXY_HEIGHT } from './proxy.js'
+export { visionFrames, visionImage, VISION_MAX_EDGE, type VisionImage } from './vision.js'
 export { extractZip, type ExtractedEntry } from './zip.js'
 export {
   isSupportedMedia,

@@ -19,7 +19,17 @@ const envSchema = z.object({
   SESSION_SECRET: z.string().min(1).optional(),
 
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_VISION_MODEL: z.string().default('claude-sonnet-5'),
+  /**
+   * Point the SDK at a gateway or proxy instead of api.anthropic.com. Empty is
+   * treated as unset, since .env.example ships the key with no value.
+   */
+  ANTHROPIC_BASE_URL: z
+    .union([z.string().url(), z.literal('')])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  ANTHROPIC_VISION_MODEL: z.string().default('claude-opus-5'),
+  /** Vision tagging is a classification task; low effort keeps a library-wide run cheap. */
+  ANTHROPIC_VISION_EFFORT: z.enum(['low', 'medium', 'high', 'xhigh', 'max']).default('low'),
   ANTHROPIC_PLANNING_MODEL: z.string().default('claude-opus-5'),
   AI_MAX_BATCH_COST_USD: z.coerce.number().default(5),
 

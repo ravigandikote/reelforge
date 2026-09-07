@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@prisma/client": "^6.19.3",
+    "@reelforge/ai": "workspace:*",
     "@reelforge/db": "workspace:*",
     "@reelforge/google": "workspace:*",
     "@reelforge/media": "workspace:*",

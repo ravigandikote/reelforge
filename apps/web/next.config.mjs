@@ -7,7 +7,7 @@ loadEnv({ path: new URL('../../.env', import.meta.url).pathname })
 const nextConfig = {
   reactStrictMode: true,
   // Workspace packages ship as TypeScript source, so Next compiles them itself.
-  transpilePackages: ['@reelforge/shared', '@reelforge/db', '@reelforge/media', '@reelforge/google'],
+  transpilePackages: ['@reelforge/shared', '@reelforge/db', '@reelforge/media', '@reelforge/google', '@reelforge/ai'],
   experimental: {
     // Keeps the monorepo root (media/, renders/, prisma/) resolvable from the app.
     outputFileTracingRoot: new URL('../../', import.meta.url).pathname,

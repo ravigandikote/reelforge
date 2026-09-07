@@ -55,6 +55,7 @@ apps/worker     BullMQ consumers — ingest, analyse, plan, tts, render
 packages/shared Zod schemas, brand/format constants, EDL rules (no runtime deps)
 packages/media  FFmpeg/sharp: probe, thumbnails, 720p proxies, colours, zip
 packages/google OAuth (PKCE), Photos Picker sessions, Drive listing/download
+packages/ai     Anthropic calls: vision descriptions, cost estimates, pricing
 packages/db     Prisma client, AES-256-GCM token encryption, path helpers
 prisma/         schema.prisma, migrations, seed
 media/          ingested originals — written once, never modified
@@ -124,6 +125,36 @@ An item that cannot be downloaded or read is skipped with a warning; the rest of
 the batch still lands. Re-ingesting the same media is a no-op — files are deduped
 by sha256, so pulling the same album twice costs nothing but the download.
 
+## Describing the library
+
+**Describe with AI** on the Library page runs one vision call per asset and
+records a one-line description, tags from a fixed vocabulary, a people count, a
+focal point, and whether the Indian flag is visible. Photos are sent as a single
+downscaled frame; videos as three frames sampled across the clip, because one
+poster frame cannot tell a slow pan from a dance.
+
+Nothing runs until you have seen what it will cost. The estimate is computed
+from the actual pixel dimensions of what would be sent — a wall of 4K stills
+costs several times what a wall of phone snaps does — and it is deliberately a
+ceiling: prompt caching across the batch usually beats it. A run that would
+exceed `AI_MAX_BATCH_COST_USD` (default $5) is refused rather than started.
+
+The model is `ANTHROPIC_VISION_MODEL` (default `claude-opus-5`). Pointing it at
+`claude-sonnet-5` or `claude-haiku-4-5` costs less per asset, and the estimate
+updates to match. `ANTHROPIC_VISION_EFFORT` defaults to `low`: describing one
+image is a classification task, and higher effort mostly buys longer thinking you
+are paying for. The response comes back through a strict tool schema and is
+validated with Zod before anything is written, so a tag outside the vocabulary or
+a focal point outside the frame is rejected rather than stored.
+
+Two things are deliberate: the pass never sets consent (that is a human
+decision), and it never overwrites a tag you set by hand — a re-run replaces only
+its own tags. Assets flagged as containing the Indian flag get a badge in the
+grid and are excluded from cropping and overlays downstream.
+
+The actual cost of each run is recorded on the job, so the job history doubles as
+a spend log.
+
 ## Configuration notes
 
 **Database.** SQLite in dev (`prisma/dev.db`). The schema avoids Prisma enums and
@@ -167,7 +198,7 @@ note per track) is committed.
 1. ✅ Monorepo, Prisma schema, `.env.example`, `pnpm dev` orchestration
 2. ✅ Direct-upload ingest → probe → catalogue
 3. ✅ Google Photos Picker + Drive folder ingest
-4. ⬜ AI descriptions and tags, with a cost estimate before running
+4. ✅ AI descriptions and tags, with a cost estimate before running
 5. ⬜ Script → EDL planning with Zod validation
 6. ⬜ Remotion compositions for 16:9 and 9:16
 7. ⬜ ElevenLabs voiceover, word alignment, SRT/VTT, music ducking
@@ -213,6 +244,14 @@ a reconnect.
 
 **Downloads come back small or without EXIF.** Something dropped the `=d` / `=dv`
 suffix on the Picker `baseUrl`; that is what asks Google for the original bytes.
+
+**A setting in `.env` seems to be ignored.** A real environment variable wins:
+`.env` is loaded without overriding what is already exported in your shell (or
+set by a container). `env | grep ANTHROPIC` will show a shadowing value.
+
+**The AI batch is refused as too expensive.** `AI_MAX_BATCH_COST_USD` caps a
+single run. Narrow the scope to "not yet described", switch
+`ANTHROPIC_VISION_MODEL` to a cheaper model, or raise the limit.
 
 **A HEIC photo was skipped.** sharp's prebuilt libvips has no HEIC support, and
 the FFmpeg fallback cannot always decode it either. Export as JPEG, or point

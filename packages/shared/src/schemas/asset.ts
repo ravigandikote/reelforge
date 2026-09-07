@@ -18,10 +18,21 @@ export type IngestSource = z.infer<typeof ingestSourceSchema>
 const tagSlugs = TAG_VOCABULARY.map((t) => t.slug) as [string, ...string[]]
 export const tagSlugSchema = z.enum(tagSlugs)
 
+/**
+ * Tags the vision pass may emit. Admin tags (cleared, indian_flag) are excluded:
+ * consent is a human decision, and the flag comes back as its own boolean so it
+ * cannot be lost among the descriptive tags.
+ */
+export const AI_TAG_SLUGS = TAG_VOCABULARY.filter((t) => t.group !== 'admin').map((t) => t.slug) as [
+  string,
+  ...string[],
+]
+export const aiTagSlugSchema = z.enum(AI_TAG_SLUGS)
+
 /** Output contract for the vision pass (build step 4). Validated before any DB write. */
 export const assetAnalysisSchema = z.object({
   description: z.string().min(1).max(200),
-  tags: z.array(tagSlugSchema).max(8),
+  tags: z.array(aiTagSlugSchema).max(8),
   peopleCount: z.number().int().min(0).max(500),
   /** Subject centre, 0..1 of width/height. Drives smart crop, never a blind centre crop. */
   focalPoint: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }),

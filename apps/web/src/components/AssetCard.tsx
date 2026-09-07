@@ -19,6 +19,9 @@ export interface AssetSummary {
   hasIndianFlag: boolean
   dominantColors: string[]
   hasThumb: boolean
+  description: string | null
+  tags: string[]
+  peopleCount: number | null
 }
 
 export function AssetCard({ asset }: { asset: AssetSummary }) {
@@ -80,17 +83,52 @@ export function AssetCard({ asset }: { asset: AssetSummary }) {
           )}
         </div>
 
-        {asset.kind === 'video' && (
-          <span className="absolute right-2 top-2 rounded-full bg-indigo/80 px-2 py-0.5 font-caption text-[10px] uppercase tracking-wider text-cream">
-            video
-          </span>
-        )}
+        <div className="absolute right-2 top-2 flex flex-col items-end gap-1">
+          {asset.kind === 'video' && (
+            <span className="rounded-full bg-indigo/80 px-2 py-0.5 font-caption text-[10px] uppercase tracking-wider text-cream">
+              video
+            </span>
+          )}
+          {asset.hasIndianFlag && (
+            // Flagged assets are never cropped, ken-burnsed or overlaid.
+            <span
+              title="Contains the Indian flag — excluded from crops and overlays"
+              className="rounded-full bg-amber-500/90 px-2 py-0.5 font-caption text-[10px] uppercase tracking-wider text-amber-950"
+            >
+              flag
+            </span>
+          )}
+        </div>
       </div>
 
       <figcaption className="space-y-2 p-3">
         <p className="truncate font-caption text-sm" title={asset.originalName}>
           {asset.originalName}
         </p>
+        {asset.description ? (
+          <p className="font-caption text-xs leading-relaxed text-indigo/70">{asset.description}</p>
+        ) : (
+          <p className="font-caption text-xs italic text-indigo/35">No AI description yet</p>
+        )}
+
+        {asset.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {asset.tags.map((tag) => (
+              <span
+                key={tag}
+                className="rounded bg-indigo/8 px-1.5 py-0.5 font-caption text-[10px] text-indigo/60"
+              >
+                {tag.replace(/_/g, ' ')}
+              </span>
+            ))}
+            {asset.peopleCount !== null && asset.peopleCount > 0 && (
+              <span className="rounded bg-indigo/8 px-1.5 py-0.5 font-caption text-[10px] text-indigo/60">
+                {asset.peopleCount} {asset.peopleCount === 1 ? 'person' : 'people'}
+              </span>
+            )}
+          </div>
+        )}
+
         <p className="font-caption text-xs text-indigo/50">
           {asset.width}×{asset.height} · {formatBytes(asset.bytes)}
           {captured ? ` · ${captured}` : ''}

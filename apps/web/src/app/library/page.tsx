@@ -3,6 +3,7 @@ import { fromJson, prisma } from '@reelforge/db'
 import { SUPPORTED_EXTENSIONS } from '@reelforge/media/mime'
 import { connectedAccount, isGoogleConfigured } from '@reelforge/google'
 import { getEnv } from '@reelforge/shared/env'
+import { AnalyzePanel } from '@/components/AnalyzePanel'
 import { AssetCard, type AssetSummary } from '@/components/AssetCard'
 import { IngestPanel } from '@/components/IngestPanel'
 import { Badge } from '@/components/ui/badge'
@@ -10,8 +11,8 @@ import { formatBytes } from '@/lib/format'
 
 export const dynamic = 'force-dynamic'
 
-type Filters = { kind?: string; orientation?: string; consent?: string }
-type SearchParams = Filters & { source?: string }
+type Filters = { kind?: string; orientation?: string; consent?: string; described?: string }
+type SearchParams = Filters & { source?: string; analyze?: string }
 
 const SOURCE_TABS = ['upload', 'photos', 'drive', 'share'] as const
 
@@ -32,6 +33,12 @@ const CONSENT_FILTERS = [
   { value: undefined, label: 'Any consent' },
   { value: 'cleared', label: 'Cleared' },
   { value: 'uncleared', label: 'Not cleared' },
+]
+
+const DESCRIBED_FILTERS = [
+  { value: undefined, label: 'Any description' },
+  { value: 'yes', label: 'Described' },
+  { value: 'no', label: 'Not described' },
 ]
 
 function buildHref(current: Filters, key: keyof Filters, value: string | undefined) {
@@ -76,6 +83,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
     kind: searchParams.kind,
     orientation: searchParams.orientation,
     consent: searchParams.consent,
+    described: searchParams.described,
   }
 
   const where = {
@@ -86,15 +94,26 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
       : filters.consent === 'uncleared'
         ? { consentCleared: false }
         : {}),
+    ...(filters.described === 'yes'
+      ? { analyzedAt: { not: null } }
+      : filters.described === 'no'
+        ? { analyzedAt: null }
+        : {}),
   }
 
   const googleConfigured = isGoogleConfigured()
   const account = googleConfigured ? await connectedAccount() : null
 
-  const [assets, total, cleared, bytes] = await Promise.all([
-    prisma.asset.findMany({ where, orderBy: [{ capturedAt: 'desc' }, { createdAt: 'desc' }], take: 200 }),
+  const [assets, total, cleared, undescribed, bytes] = await Promise.all([
+    prisma.asset.findMany({
+      where,
+      orderBy: [{ capturedAt: 'desc' }, { createdAt: 'desc' }],
+      take: 200,
+      include: { tags: { include: { tag: true } } },
+    }),
     prisma.asset.count(),
     prisma.asset.count({ where: { consentCleared: true } }),
+    prisma.asset.count({ where: { analyzedAt: null, excluded: false } }),
     prisma.asset.aggregate({ _sum: { bytes: true } }),
   ])
 
@@ -112,6 +131,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
     hasIndianFlag: asset.hasIndianFlag,
     dominantColors: fromJson<string[]>(asset.dominantColorsJson, []),
     hasThumb: Boolean(asset.thumbPath),
+    description: asset.description,
+    tags: asset.tags.map((link) => link.tag.slug).filter((slug) => slug !== 'indian_flag'),
+    peopleCount: asset.peopleCount,
   }))
 
   return (
@@ -141,10 +163,17 @@ export default async function LibraryPage({ searchParams }: { searchParams: Sear
         }
       />
 
+      <AnalyzePanel
+        unanalyzedCount={undescribed}
+        total={total}
+        defaultOpen={searchParams.analyze === '1'}
+      />
+
       <div className="flex flex-wrap gap-x-6 gap-y-2">
         <FilterRow current={filters} filterKey="kind" options={KIND_FILTERS} />
         <FilterRow current={filters} filterKey="orientation" options={ORIENTATION_FILTERS} />
         <FilterRow current={filters} filterKey="consent" options={CONSENT_FILTERS} />
+        <FilterRow current={filters} filterKey="described" options={DESCRIBED_FILTERS} />
       </div>
 
       {summaries.length === 0 ? (
