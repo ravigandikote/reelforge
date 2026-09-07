@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { VoiceButton } from '@/components/VoiceButton'
 
 export interface EdlIssueView {
   level: string
@@ -26,6 +27,8 @@ export interface EdlSegmentView {
 
 export interface EdlView {
   id: string
+  hasVoice: boolean
+  hasCaptions: boolean
   target: string
   label: string
   version: number
@@ -69,13 +72,32 @@ export function EdlViewer({ edl }: { edl: EdlView }) {
           {edl.segments.length} segments · {edl.actualSeconds.toFixed(1)}s
           {edl.targetSeconds ? ` of ${edl.targetSeconds}s` : ''} · v{edl.version}
         </span>
-        <button
-          type="button"
-          onClick={() => setShowJson((value) => !value)}
-          className="ml-auto font-caption text-xs text-terracotta hover:underline"
-        >
-          {showJson ? 'show segments' : 'show JSON'}
-        </button>
+        <span className="ml-auto flex flex-wrap items-center gap-3">
+          {edl.hasCaptions && (
+            <>
+              <a
+                href={`/api/edls/${edl.id}/captions?format=srt`}
+                className="font-caption text-xs text-terracotta hover:underline"
+              >
+                .srt
+              </a>
+              <a
+                href={`/api/edls/${edl.id}/captions?format=vtt`}
+                className="font-caption text-xs text-terracotta hover:underline"
+              >
+                .vtt
+              </a>
+            </>
+          )}
+          <VoiceButton edlId={edl.id} hasVoice={edl.hasVoice} />
+          <button
+            type="button"
+            onClick={() => setShowJson((value) => !value)}
+            className="font-caption text-xs text-terracotta hover:underline"
+          >
+            {showJson ? 'show segments' : 'show JSON'}
+          </button>
+        </span>
       </div>
 
       {errors.length > 0 && (

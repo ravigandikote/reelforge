@@ -12,11 +12,12 @@ const { markStatus, report } = await import('./progress.js')
 const { runIngest } = await import('./jobs/ingest.js')
 const { runAnalyze } = await import('./jobs/analyze.js')
 const { runPlan } = await import('./jobs/plan.js')
+const { runTts } = await import('./jobs/tts.js')
 
 const env = getEnv()
 
 /**
- * Build steps 6–8 replace the remaining placeholders one queue at a time. Each
+ * Build step 8 replaces the remaining placeholder one queue at a time. Each
  * keeps the same contract: mark the job running, report progress, mark it
  * succeeded or failed.
  */
@@ -37,7 +38,7 @@ const workers = [
   registerWorker(QUEUE_NAMES.ingest, (job) => runIngest(job.data), 2),
   registerWorker(QUEUE_NAMES.analyze, (job) => runAnalyze(job.data), 1),
   registerWorker(QUEUE_NAMES.plan, (job) => runPlan(job.data), 1),
-  registerWorker(QUEUE_NAMES.tts, placeholder('tts', 'step 7'), 1),
+  registerWorker(QUEUE_NAMES.tts, (job) => runTts(job.data), 1),
   registerWorker(QUEUE_NAMES.render, placeholder('render', 'step 6'), env.RENDER_CONCURRENCY),
 ]
 

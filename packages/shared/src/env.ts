@@ -43,6 +43,13 @@ const envSchema = z.object({
   ELEVENLABS_API_KEY: z.string().optional(),
   ELEVENLABS_VOICE_ID: z.string().optional(),
   ELEVENLABS_MODEL_ID: z.string().default('eleven_multilingual_v2'),
+  /** Point the TTS client at a gateway, or at a stand-in during testing. */
+  ELEVENLABS_BASE_URL: z
+    .union([z.string().url(), z.literal('')])
+    .optional()
+    .transform((value) => (value ? value : undefined)),
+  /** ElevenLabs bills per character; this caps a single voiceover job. */
+  TTS_MAX_CHARS_PER_JOB: z.coerce.number().int().positive().default(20000),
 
   FFMPEG_PATH: z.string().optional(),
   FFPROBE_PATH: z.string().optional(),

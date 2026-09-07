@@ -41,6 +41,7 @@
     "@reelforge/google": "workspace:*",
     "@reelforge/media": "workspace:*",
     "@reelforge/shared": "workspace:*",
+    "@reelforge/tts": "workspace:*",
     "@reelforge/video": "workspace:*",
     "@types/archiver": "^6.0.4",
     "@types/node": "^22.10.2",

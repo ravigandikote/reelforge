@@ -8,6 +8,10 @@ interface Props {
   target: RenderTarget
   brand: Brand
   durationInFrames: number
+  /** Word timings relative to this cue's start, for word-by-word highlighting. */
+  words?: Array<{ word: string; startSec: number; endSec: number }>
+  /** Where the cue starts on the film timeline, so word times can be compared. */
+  cueStartSec?: number
 }
 
 /**
@@ -16,7 +20,14 @@ interface Props {
  * disappearing behind it. Word-level timing arrives with the voiceover in build
  * step 7; until then a caption holds for its whole segment.
  */
-export function Caption({ text, target, brand, durationInFrames }: Props) {
+export function Caption({
+  text,
+  target,
+  brand,
+  durationInFrames,
+  words,
+  cueStartSec = 0,
+}: Props) {
   const frame = useCurrentFrame()
   const { fps, height } = useVideoConfig()
   const zone = SAFE_ZONES[target]
@@ -31,6 +42,9 @@ export function Caption({ text, target, brand, durationInFrames }: Props) {
 
   const bandTop = zone.captionBand.top * height
   const bandHeight = (zone.captionBand.bottom - zone.captionBand.top) * height
+
+  // Time within the cue, used to decide which word is being spoken right now.
+  const elapsed = cueStartSec + frame / fps
 
   return (
     <AbsoluteFill style={{ opacity }}>
@@ -62,7 +76,28 @@ export function Caption({ text, target, brand, durationInFrames }: Props) {
             boxDecorationBreak: 'clone',
           }}
         >
-          {text}
+          {words && words.length > 0
+            ? words.map((word, index) => {
+                const spoken = elapsed >= word.startSec
+                const current = spoken && elapsed < word.endSec
+                return (
+                  <span
+                    key={`${word.word}-${index}`}
+                    style={{
+                      // Words brighten as they are said; the current one takes
+                      // the accent colour, which is what makes a caption read
+                      // as following the voice rather than sitting under it.
+                      color: current ? brand.terracotta : brand.cream,
+                      opacity: spoken ? 1 : 0.55,
+                      transition: 'none',
+                    }}
+                  >
+                    {word.word}
+                    {index < words.length - 1 ? ' ' : ''}
+                  </span>
+                )
+              })
+            : text}
         </span>
       </div>
     </AbsoluteFill>

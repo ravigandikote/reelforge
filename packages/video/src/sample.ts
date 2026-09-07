@@ -1,4 +1,4 @@
-import { DEFAULT_BRAND, type RenderAsset, type RenderProps } from './props.js'
+import { DEFAULT_BRAND, type Cue, type RenderAsset, type RenderProps } from './props.js'
 import type { RenderTarget } from '@reelforge/shared'
 
 /**
@@ -78,7 +78,51 @@ const BEATS: Beat[] = [
   { assetId: 'stage', seconds: 4, motion: 'pan_left', caption: 'Come and spend a weekend' },
 ]
 
-export function samplePropsFor(target: RenderTarget): RenderProps {
+export interface SampleOptions {
+  /** Path inside the public dir to a narration track, if one has been staged. */
+  voiceSrc?: string | null
+  /** With a voice track, captions follow the speech instead of the cuts. */
+  withCues?: boolean
+}
+
+/**
+ * Caption cues for the sample, with word timings spread across each caption's
+ * segment. `pnpm sample --voice` generates a tone burst per cue so the
+ * word-by-word highlighting can be seen without a TTS key.
+ */
+export function sampleCues(): Cue[] {
+  const cues: Cue[] = []
+  let cursor = 0
+
+  for (const [index, beat] of BEATS.entries()) {
+    const startSec = cursor
+    cursor += beat.seconds
+    if (!beat.caption) continue
+
+    const parts = beat.caption.split(/\s+/)
+    // Speech starts a beat after the cut and finishes before it.
+    const speechStart = startSec + 0.35
+    const speechEnd = startSec + beat.seconds - 0.35
+    const per = (speechEnd - speechStart) / parts.length
+
+    cues.push({
+      index: cues.length,
+      startSec: speechStart,
+      endSec: speechEnd,
+      text: beat.caption,
+      segmentIndex: index,
+      words: parts.map((word, position) => ({
+        word,
+        startSec: Number((speechStart + position * per).toFixed(3)),
+        endSec: Number((speechStart + (position + 1) * per).toFixed(3)),
+      })),
+    })
+  }
+
+  return cues
+}
+
+export function samplePropsFor(target: RenderTarget, options: SampleOptions = {}): RenderProps {
   let cursor = 0
   const segments = BEATS.map((beat, index) => {
     const startSec = Math.round(cursor * 1000) / 1000
@@ -106,7 +150,8 @@ export function samplePropsFor(target: RenderTarget): RenderProps {
     showEndCard: true,
     captionsEnabled: true,
     muteSourceAudio: true,
-    voiceSrc: null,
+    cues: options.withCues ? sampleCues() : [],
+    voiceSrc: options.voiceSrc ?? null,
     musicSrc: null,
   }
 }

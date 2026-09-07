@@ -11,7 +11,8 @@
     "./schemas": "./src/schemas/index.ts",
     "./env": "./src/env.ts",
     "./paths": "./src/paths.ts",
-    "./edl": "./src/edl/index.ts"
+    "./edl": "./src/edl/index.ts",
+    "./captions": "./src/captions/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"

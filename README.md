@@ -47,6 +47,7 @@ Google OAuth client (see below). Every variable is documented in `.env.example`.
 | `pnpm typecheck` | TypeScript across every workspace package |
 | `pnpm fixtures` | regenerate the synthetic test album in `tests/fixtures/` |
 | `pnpm sample` | render the hand-written sample EDL to `renders/sample/` |
+| `pnpm sample --voice` | same, with a synthetic narration track and word-timed captions |
 | `pnpm studio` | open the Remotion studio on the compositions |
 | `pnpm fonts:fetch` | re-download the brand faces into `packages/video/fonts` |
 
@@ -60,6 +61,7 @@ packages/media  FFmpeg/sharp: probe, thumbnails, 720p proxies, colours, zip
 packages/google OAuth (PKCE), Photos Picker sessions, Drive listing/download
 packages/ai     Anthropic calls: vision descriptions, cost estimates, pricing
 packages/video  Remotion compositions, brand kit, self-hosted fonts, renderer
+packages/tts    ElevenLabs narration with character-level timestamps
 packages/db     Prisma client, AES-256-GCM token encryption, path helpers
 prisma/         schema.prisma, migrations, seed
 media/          ingested originals — written once, never modified
@@ -241,6 +243,45 @@ actually loaded, so the first frames cannot be laid out in the wrong typeface.
 use an existing browser, set `REMOTION_BROWSER_EXECUTABLE` — but it must be a
 *headless shell* build, not a regular Chrome binary.
 
+## Voiceover and captions
+
+**Voiceover & captions** on a planned cut narrates it, times the captions to the
+speech, and mixes the music under it. The artefacts belong to the cut, not to a
+render, so re-rendering the same edit never pays for the narration twice:
+
+```
+renders/<edlId>/voice/000.mp3   one file per spoken segment
+renders/<edlId>/voice.m4a       the lines placed on the film's timeline
+renders/<edlId>/audio.m4a       the final mix, music ducked under the voice
+renders/<edlId>/captions.srt    and .vtt
+```
+
+**Word timings come from the TTS provider, not a second alignment pass.**
+ElevenLabs' `with-timestamps` endpoint returns character-level timings generated
+with the audio, so they cannot drift from it the way a Whisper pass over the
+finished file can — and it is one API call instead of two.
+
+Lines are **placed at their segment's start, never concatenated.** The EDL
+decides when each line is spoken; concatenating them would let one long line
+push everything after it out of sync with the picture. A line that outruns its
+shot is reported as a warning naming the segment, because that is the one problem
+the edit cannot absorb by itself.
+
+**Captions break where a reader expects.** Cues split on sentence endings, on a
+pause in the delivery, at the word limit, and always at a cut. A cue too brief to
+read is held longer rather than merged, and only merged backwards when there is
+no room to hold it.
+
+**Ducking is level-independent.** Both the narration and the bed are normalised
+first — voice to -16 LUFS, music to -24 — and the voice then drives a sidechain
+compressor on the bed. Without that, a hot track and a quiet one would duck by
+wildly different amounts. Measured on a test mix: **10.5 dB of reduction while
+speaking, 0.0 dB in the gaps.**
+
+Without a key, captions still work: turn voiceover off and cues are timed from
+the edit instead. `pnpm sample --voice` renders the sample with a synthetic
+narration track so the word-by-word highlighting can be seen offline.
+
 ## Configuration notes
 
 **Database.** SQLite in dev (`prisma/dev.db`). The schema avoids Prisma enums and
@@ -287,7 +328,7 @@ note per track) is committed.
 4. ✅ AI descriptions and tags, with a cost estimate before running
 5. ✅ Script → EDL planning with Zod validation
 6. ✅ Remotion compositions for 16:9 and 9:16
-7. ⬜ ElevenLabs voiceover, word alignment, SRT/VTT, music ducking
+7. ✅ ElevenLabs voiceover, word alignment, SRT/VTT, music ducking
 8. ⬜ End-to-end pipeline: progress, preview, per-segment regenerate, download
 9. ⬜ Tests: EDL validation, duration fitting, fixture-album end-to-end
 10. ⬜ Full README and troubleshooting
@@ -335,6 +376,10 @@ suffix on the Picker `baseUrl`; that is what asks Google for the original bytes.
 `REMOTION_BROWSER_EXECUTABLE` is pointing at a full Chrome binary. Point it at a
 `chrome-headless-shell` build instead, or unset it and let Remotion download its
 own.
+
+**ElevenLabs returns 422.** Usually an unknown or unset voice id. Set
+`ELEVENLABS_VOICE_ID` to a voice the account can use — the id from the URL in the
+ElevenLabs voice library, not the display name.
 
 **A setting in `.env` seems to be ignored.** A real environment variable wins:
 `.env` is loaded without overriding what is already exported in your shell (or

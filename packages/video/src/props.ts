@@ -44,6 +44,19 @@ export const brandSchema = z.object({
 })
 export type Brand = z.infer<typeof brandSchema>
 
+/** A caption cue with its word timings, so the renderer can follow the speech. */
+export const cueSchema = z.object({
+  index: z.number(),
+  startSec: z.number(),
+  endSec: z.number(),
+  text: z.string(),
+  segmentIndex: z.number(),
+  words: z
+    .array(z.object({ word: z.string(), startSec: z.number(), endSec: z.number() }))
+    .default([]),
+})
+export type Cue = z.infer<typeof cueSchema>
+
 export const renderPropsSchema = z.object({
   target: z.enum(RENDER_TARGETS),
   segments: z.array(renderSegmentSchema),
@@ -56,6 +69,11 @@ export const renderPropsSchema = z.object({
   captionsEnabled: z.boolean().default(true),
   /** Source audio is off by default: the voiceover and music beds own the track. */
   muteSourceAudio: z.boolean().default(true),
+  /**
+   * Speech-timed captions. When present these replace the per-segment caption
+   * text, because a caption timed to the voice beats one timed to the cut.
+   */
+  cues: z.array(cueSchema).default([]),
   /** Optional narration track, added in build step 7. */
   voiceSrc: z.string().nullable().default(null),
   musicSrc: z.string().nullable().default(null),

@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Edl" ADD COLUMN "musicPath" TEXT;
+ALTER TABLE "Edl" ADD COLUMN "srtPath" TEXT;
+ALTER TABLE "Edl" ADD COLUMN "voicePath" TEXT;
+ALTER TABLE "Edl" ADD COLUMN "voiceSeconds" REAL;
+ALTER TABLE "Edl" ADD COLUMN "vttPath" TEXT;

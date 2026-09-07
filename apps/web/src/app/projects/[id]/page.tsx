@@ -53,6 +53,8 @@ export default async function ProjectPage({ params }: { params: { id: string } }
       })
       return {
         id: edl.id,
+        hasVoice: Boolean(edl.voicePath),
+        hasCaptions: Boolean(edl.srtPath),
         target: edl.target,
         label: RENDER_FORMATS[edl.target as RenderTarget]?.label ?? edl.target,
         version: edl.version,

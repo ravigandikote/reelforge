@@ -182,6 +182,12 @@ model Edl {
   outputTokens  Int?
   /// The exact LLM payload after Zod validation, kept for debugging and regenerate.
   rawJson       String
+  /// Voiceover and subtitle artefacts, produced once per EDL and reused by every render.
+  voicePath     String?
+  musicPath     String?
+  srtPath       String?
+  vttPath       String?
+  voiceSeconds  Float?
   segments      Segment[]
   renders       Render[]
   createdAt     DateTime  @default(now())

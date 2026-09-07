@@ -61,7 +61,7 @@ export function Film(props: RenderProps) {
               muteSourceAudio={props.muteSourceAudio}
               background={brand.indigo}
             />
-            {props.captionsEnabled && segment.captionText && !flagged && (() => {
+            {props.captionsEnabled && props.cues.length === 0 && segment.captionText && !flagged && (() => {
               const captionFrames = Math.min(durationInFrames, Math.max(0, endCardFrom - from))
               if (captionFrames <= 0) return null
               return (
@@ -78,6 +78,33 @@ export function Film(props: RenderProps) {
           </Sequence>
         )
       })}
+
+      {/* Speech-timed cues sit above the shots, independent of the cuts: a
+          sentence that runs across a cut stays on screen through it. */}
+      {props.captionsEnabled &&
+        props.cues.map((cue) => {
+          const from = Math.round(cue.startSec * fps)
+          const frames = Math.max(1, Math.round(cue.endSec * fps) - from)
+          const visible = Math.min(frames, Math.max(0, endCardFrom - from))
+          if (visible <= 0) return null
+
+          const asset = assetById.get(segments.find((s) => s.index === cue.segmentIndex)?.assetId ?? '')
+          // Nothing is overlaid on an asset containing the flag, captions included.
+          if (asset?.hasIndianFlag) return null
+
+          return (
+            <Sequence key={`cue-${cue.index}`} from={from} durationInFrames={visible}>
+              <Caption
+                text={cue.text}
+                target={target}
+                brand={brand}
+                durationInFrames={visible}
+                words={cue.words}
+                cueStartSec={cue.startSec}
+              />
+            </Sequence>
+          )
+        })}
 
       {/* The logo sits above the shots but below the cards, and steps aside
           for any segment showing the flag. */}

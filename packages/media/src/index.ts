@@ -1,5 +1,13 @@
 export { ffmpeg, ffmpegPath, ffprobePath, ffprobeAsync, runFfmpeg } from './ffmpeg.js'
 export { checksumFile } from './checksum.js'
+export {
+  audioDuration,
+  buildVoiceTrack,
+  duckMusicUnderVoice,
+  musicOnlyTrack,
+  type DuckOptions,
+  type VoiceClip,
+} from './audio.js'
 export { dominantColors } from './colors.js'
 export { probeFile, probeImage, probeVideo } from './probe.js'
 export { imageThumbnail, videoThumbnail, THUMB_WIDTH } from './thumbnail.js'
