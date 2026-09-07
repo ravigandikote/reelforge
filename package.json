@@ -29,7 +29,9 @@
     "fixtures": "tsx scripts/make-fixtures.mts",
     "sample": "tsx scripts/render-sample.mts",
     "fonts:fetch": "tsx scripts/fetch-fonts.mts",
-    "studio": "pnpm --filter @reelforge/video studio"
+    "studio": "pnpm --filter @reelforge/video studio",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:all": "pnpm test && pnpm test:e2e"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

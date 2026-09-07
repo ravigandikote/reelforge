@@ -43,7 +43,9 @@ Google OAuth client (see below). Every variable is documented in `.env.example`.
 | `pnpm redis:up` / `pnpm redis:down` | Redis container lifecycle |
 | `pnpm db:migrate` / `pnpm db:seed` / `pnpm db:studio` | Prisma workflow |
 | `pnpm db:reset` | drop and rebuild the dev database |
-| `pnpm test` | Vitest unit suite |
+| `pnpm test` | fast suite — schemas, EDL rules, media, captions, cost (seconds) |
+| `pnpm test:e2e` | the whole pipeline over the fixture album (minutes) |
+| `pnpm test:all` | both |
 | `pnpm typecheck` | TypeScript across every workspace package |
 | `pnpm fixtures` | regenerate the synthetic test album in `tests/fixtures/` |
 | `pnpm sample` | render the hand-written sample EDL to `renders/sample/` |
@@ -308,6 +310,35 @@ Finished films appear on the project page with a player (captions attached),
 and download links for the MP4, `.srt`, `.vtt` and thumbnail. Everything lands in
 `renders/<jobId>/`.
 
+## Tests
+
+`pnpm test` is the fast suite: schema and EDL rules, duration fitting, caption
+timing, subtitle formatting, media probing, audio mixing and ducking, cost
+estimates, and the request shapes sent to both APIs. Seconds, no network.
+
+`pnpm test:e2e` runs the **whole pipeline over the fixture album** — upload,
+catalogue, describe, plan, narrate, render — with local stand-ins for the two
+APIs, into a temp database and temp media directories. Everything between those
+stand-ins is the real code: the same job functions the worker runs. It asserts
+the things that are expensive to get wrong:
+
+- five files catalogued with the right orientations, including the rotated clip;
+- every asset described, tagged and priced, with the flagged one carrying its tag;
+- a 30-second cut that lands within ±0.5s, with a continuous timeline and the
+  flag corrections applied;
+- narration aligned to words, `.srt` and `.vtt` written;
+- **a render blocked** when an asset loses its consent after planning;
+- a playable 1080×1920 file with an audio track and a thumbnail.
+
+The render step needs a headless browser and is skipped, not failed, when
+`REMOTION_BROWSER_EXECUTABLE` points at nothing.
+
+Writing it was worth it immediately: it found two real bugs. The renderer
+ignored `MEDIA_DIR` and always served from the repo's `media/`, so any
+non-default library rendered black frames. And the voiceover track was written
+with a container start offset instead of real leading silence, which would have
+played the narration from the first frame rather than at its segment.
+
 ## Configuration notes
 
 **Database.** SQLite in dev (`prisma/dev.db`). The schema avoids Prisma enums and
@@ -356,7 +387,7 @@ note per track) is committed.
 6. ✅ Remotion compositions for 16:9 and 9:16
 7. ✅ ElevenLabs voiceover, word alignment, SRT/VTT, music ducking
 8. ✅ End-to-end pipeline: progress, preview, per-segment regenerate, download
-9. ⬜ Tests: EDL validation, duration fitting, fixture-album end-to-end
+9. ✅ Tests: EDL validation, duration fitting, fixture-album end-to-end
 10. ⬜ Full README and troubleshooting
 
 ## Troubleshooting

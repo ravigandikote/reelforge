@@ -1,8 +1,7 @@
-import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { bundle } from '@remotion/bundler'
 import { ensureBrowser, renderMedia, selectComposition } from '@remotion/renderer'
-import { repoRoot } from '@reelforge/shared/paths'
+import { mediaDir } from '@reelforge/media/paths'
 import { compositionId, type RenderProps } from './props.js'
 import { webpackOverride } from './webpack.js'
 
@@ -11,35 +10,46 @@ export interface RenderOptions {
   outputPath: string
   /** 0..1, called as frames complete. */
   onProgress?: (progress: number) => void
-  /** Defaults to the repo's media/ folder, which is what staticFile() resolves against. */
+  /** Defaults to the configured media library, which is what staticFile() resolves against. */
   publicDir?: string
   concurrency?: number
 }
 
-let bundlePromise: Promise<string> | null = null
-
 /**
- * Bundling is the slow part, so it happens once per process and is reused for
- * every target — the four cuts of one project share a bundle.
+ * Bundling is the slow part, so it happens once per media library and is reused
+ * for every target — the four cuts of one project share a bundle. The cache is
+ * keyed by public directory because the bundler copies that directory into the
+ * bundle: one cached promise would serve the wrong files to a second library.
  */
+const bundles = new Map<string, Promise<string>>()
+
 export function bundleFilm(publicDir?: string): Promise<string> {
-  bundlePromise ??= bundle({
-    entryPoint: fileURLToPath(new URL('./index.ts', import.meta.url)),
-    publicDir: publicDir ?? path.join(repoRoot(), 'media'),
-    webpackOverride,
-    onProgress: () => undefined,
-  })
-  return bundlePromise
+  const dir = publicDir ?? mediaDir()
+  let existing = bundles.get(dir)
+  if (!existing) {
+    existing = bundle({
+      entryPoint: fileURLToPath(new URL('./index.ts', import.meta.url)),
+      publicDir: dir,
+      webpackOverride,
+      onProgress: () => undefined,
+    })
+    bundles.set(dir, existing)
+  }
+  return existing
 }
 
 export async function renderFilm(options: RenderOptions): Promise<{ durationInFrames: number }> {
-  const publicDir = options.publicDir ?? path.join(repoRoot(), 'media')
+  // MEDIA_DIR decides where the library lives; the renderer has to serve from
+  // the same place the ingest wrote to.
+  const publicDir = options.publicDir ?? mediaDir()
   // Remotion downloads its own Chrome Headless Shell unless one is provided;
   // REMOTION_BROWSER_EXECUTABLE points it at a system browser instead.
   const browserExecutable = process.env.REMOTION_BROWSER_EXECUTABLE || null
   if (!browserExecutable) await ensureBrowser()
 
   const serveUrl = await bundleFilm(publicDir)
+  if (process.env.REELFORGE_DEBUG_BUNDLE) {
+    }
 
   const composition = await selectComposition({
     serveUrl,
