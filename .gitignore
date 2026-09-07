@@ -32,3 +32,6 @@ coverage/
 # redis snapshot if you run redis-server from the repo root
 dump.rdb
 *.tsbuildinfo
+
+# Remotion's bundle cache
+packages/video/.remotion/

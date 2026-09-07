@@ -46,6 +46,9 @@ Google OAuth client (see below). Every variable is documented in `.env.example`.
 | `pnpm test` | Vitest unit suite |
 | `pnpm typecheck` | TypeScript across every workspace package |
 | `pnpm fixtures` | regenerate the synthetic test album in `tests/fixtures/` |
+| `pnpm sample` | render the hand-written sample EDL to `renders/sample/` |
+| `pnpm studio` | open the Remotion studio on the compositions |
+| `pnpm fonts:fetch` | re-download the brand faces into `packages/video/fonts` |
 
 ## Layout
 
@@ -56,6 +59,7 @@ packages/shared Zod schemas, brand/format constants, EDL rules (no runtime deps)
 packages/media  FFmpeg/sharp: probe, thumbnails, 720p proxies, colours, zip
 packages/google OAuth (PKCE), Photos Picker sessions, Drive listing/download
 packages/ai     Anthropic calls: vision descriptions, cost estimates, pricing
+packages/video  Remotion compositions, brand kit, self-hosted fonts, renderer
 packages/db     Prisma client, AES-256-GCM token encryption, path helpers
 prisma/         schema.prisma, migrations, seed
 media/          ingested originals — written once, never modified
@@ -195,6 +199,48 @@ re-planning keeps the old version rather than overwriting it.
 The project page shows each cut as a timeline strip and a segment table (in/out,
 asset, motion, caption, voiceover), with the raw model JSON one click away.
 
+## Rendering
+
+Four compositions, one per format, all driven by the same `Film` component and
+the same props shape:
+
+```
+pnpm sample                    # renders every format from a hand-written EDL
+pnpm sample portrait_9x16_30   # just one
+pnpm studio                    # interactive, with the sample EDL loaded
+```
+
+The output lands in `renders/sample/`. No project, API key or queue needed —
+the sample EDL is committed, and it exercises every motion the renderer
+implements.
+
+**Title and end cards are overlaid, not appended.** Adding a 2-second title and
+a 3-second end card either side of a 30-second cut would produce a 35-second
+file and break the duration contract the planner was held to. Both sit on top of
+the opening and closing shots instead, and captions and the logo bug stop when
+the end card comes up rather than showing through it.
+
+**Smart cropping.** A landscape still in a vertical frame is cropped around the
+focal point the vision pass recorded, via `object-position` — never a blind
+centre crop, which reliably frames a shoulder and cuts off the face.
+
+**The flag rules are in the renderer too, not only the planner.** An asset marked
+as containing the Indian flag is letterboxed whole onto the brand ground —
+`contain`, not `cover`, so nothing is cropped away — held still with no
+ken-burns move, and carries no caption and no logo bug. That last part is why
+the logo is drawn as a sequence of gaps between flagged segments rather than one
+persistent layer.
+
+**Fonts are bundled, not fetched.** Fraunces, Marcellus and Poppins live in
+`packages/video/fonts` as woff2 (67 KB total, all SIL Open Font License). A
+renderer that reaches the network mid-frame fails on a bad connection and
+silently falls back to a system font; the render also blocks until the faces are
+actually loaded, so the first frames cannot be laid out in the wrong typeface.
+
+**Chromium.** Remotion downloads its own Chrome Headless Shell on first use. To
+use an existing browser, set `REMOTION_BROWSER_EXECUTABLE` — but it must be a
+*headless shell* build, not a regular Chrome binary.
+
 ## Configuration notes
 
 **Database.** SQLite in dev (`prisma/dev.db`). The schema avoids Prisma enums and
@@ -240,7 +286,7 @@ note per track) is committed.
 3. ✅ Google Photos Picker + Drive folder ingest
 4. ✅ AI descriptions and tags, with a cost estimate before running
 5. ✅ Script → EDL planning with Zod validation
-6. ⬜ Remotion compositions for 16:9 and 9:16
+6. ✅ Remotion compositions for 16:9 and 9:16
 7. ⬜ ElevenLabs voiceover, word alignment, SRT/VTT, music ducking
 8. ⬜ End-to-end pipeline: progress, preview, per-segment regenerate, download
 9. ⬜ Tests: EDL validation, duration fitting, fixture-album end-to-end
@@ -284,6 +330,11 @@ a reconnect.
 
 **Downloads come back small or without EXIF.** Something dropped the `=d` / `=dv`
 suffix on the Picker `baseUrl`; that is what asks Google for the original bytes.
+
+**Rendering fails with "Old Headless mode has been removed".**
+`REMOTION_BROWSER_EXECUTABLE` is pointing at a full Chrome binary. Point it at a
+`chrome-headless-shell` build instead, or unset it and let Remotion download its
+own.
 
 **A setting in `.env` seems to be ignored.** A real environment variable wins:
 `.env` is loaded without overriding what is already exported in your shell (or

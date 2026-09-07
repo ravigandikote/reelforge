@@ -13,7 +13,7 @@ const BUILD_STEPS: { step: number; label: string; done: boolean }[] = [
   { step: 3, label: 'Google Photos Picker + Drive ingest', done: true },
   { step: 4, label: 'AI descriptions and tags', done: true },
   { step: 5, label: 'Script → EDL planning', done: true },
-  { step: 6, label: 'Remotion compositions', done: false },
+  { step: 6, label: 'Remotion compositions', done: true },
   { step: 7, label: 'TTS, word alignment, SRT, music ducking', done: false },
   { step: 8, label: 'End-to-end pipeline with preview and download', done: false },
   { step: 9, label: 'Tests', done: false },
